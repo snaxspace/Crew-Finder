@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Crew Finder (Debug)</title>
+<title>Crew Finder</title>
 <meta name="theme-color" content="#d7000f">
 <link rel="apple-touch-icon" href="icon.png">
 <style>
@@ -17,149 +17,158 @@
   input[type="search"]{flex:1;min-width:200px;padding:12px 14px;border-radius:14px;border:0;outline:none;background:#fff;color:#111;font-size:16px}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
   .chip{padding:6px 10px;border:1px solid #ffd6d9;border-radius:999px;font-size:12px;background:#fff;color:#b0000c;cursor:pointer;user-select:none}
-  .wrap{padding:12px 12px 80px} .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px;margin:8px 0;box-shadow:0 1px 0 rgba(0,0,0,.04)}
-  .batch{font-size:12px;color:#d34e55;margin-bottom:4px;font-weight:800} .name{font-weight:900;font-size:16px;margin:2px 0}
+  .wrap{padding:12px 12px 80px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:12px;margin:8px 0;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+  .batch{font-size:12px;color:#d34e55;margin-bottom:4px;font-weight:800}
+  .name{font-weight:900;font-size:16px;margin:2px 0}
   .meta{font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .rank{display:inline-block;background:#ffe6e8;border:1px solid #ffd1d5;color:#a3000c;font-size:11px;border-radius:999px;padding:3px 8px}
-  .lineinfo{font-size:12px;color:#444;margin:6px 0} .lineinfo .missing{display:inline-block;background:#f5f5f5;border:1px solid #e8e8e8;color:#777;border-radius:999px;padding:3px 8px;margin-left:6px}
-  .notes{font-size:12px;color:#222;margin:8px 0 10px;white-space:pre-wrap} .btns{display:flex;gap:8px}
+  .lineinfo{font-size:12px;color:#444;margin:6px 0}
+  .lineinfo .missing{display:inline-block;background:#f5f5f5;border:1px solid #e8e8e8;color:#777;border-radius:999px;padding:3px 8px;margin-left:6px}
+  .notes{font-size:12px;color:#222;margin:8px 0 10px;white-space:pre-wrap}
+  .btns{display:flex;gap:8px}
   button{appearance:none;border:0;border-radius:12px;padding:12px 14px;font-size:14px;cursor:pointer}
-  .primary{background:var(--aa-red);color:#fff;font-weight:800} .primary:active{background:var(--aa-red-dark)}
+  .primary{background:#d7000f;color:#fff;font-weight:800}
+  .primary:active{background:#b0000c}
   .disabled{background:#f2f2f2;color:#999;border:1px solid #e5e5e5;cursor:not-allowed}
-  .footer{position:fixed;bottom:0;left:0;right:0;padding:10px 12px;border-top:1px solid var(--border);background:#fff;display:flex;gap:6px;flex-wrap:wrap}
-  .footer button{flex:1} #csvFile{display:none}
-  .debug{margin:10px 12px 0;background:#fff3cd;border:1px solid #ffe69c;color:#664d03;padding:10px;border-radius:12px;font-size:13px;display:none}
-  .debug code{background:#fff;border:1px solid #ffe69c;padding:1px 4px;border-radius:6px}
+  .footer{position:fixed;bottom:0;left:0;right:0;padding:10px 12px;border-top:1px solid var(--border);background:#fff;display:flex;gap:6px}
+  .footer button{flex:1}
+  #csvFile{display:none}
 </style>
 </head>
 <body>
+
 <header>
-  <div class="title"><h1>Crew Finder</h1><span class="count" id="count">(0)</span></div>
+  <div class="title">
+    <h1>Crew Finder</h1>
+    <span class="count" id="count">(0)</span>
+  </div>
   <div class="row">
     <input id="q" type="search" inputmode="search" placeholder="Search batch, name, nickname, staff ID, rank, LINE ID, notes…" autocomplete="off" />
-    <button id="testCsv" class="primary">Test CSV Link</button>
   </div>
   <div class="chips" id="chips"></div>
 </header>
 
-<div id="debug" class="debug"></div>
-<main class="wrap"><div id="list"></div></main>
+<main class="wrap">
+  <div id="list"></div>
+</main>
 
 <footer class="footer">
   <button class="ghost" id="importCsv">Import CSV</button>
-  <button class="ghost" id="syncSheets">Load from Google Sheets</button>
   <button class="ghost" id="help">Help</button>
   <input id="csvFile" type="file" accept=".csv,text/csv" />
 </footer>
 
 <script>
 const CONFIG = {
-  SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/1HNWHoh29CGYfJsawS0hTXFb8XnUlsiFpyLvi6ZxxmHs/export?format=csv&gid=1751840495",
-  HEADERS_FLEX: [
-    ["Batch"],
-    ["Name"],
-    ["Nickname", "Nick", "Nick name"],
-    ["Staff_ID", "Staff ID", "StaffId"],
-    ["Rank"],
-    ["LINE_ID", "Line ID", "LINE ID", "LineID", "Line_Id"],
-    ["Notes", "Note"]
-  ]
+  SHEET_CSV_URL: "crew.csv",
+  HEADERS: ["Batch","Name","Nickname","Staff_ID","Rank","LINE_ID","Notes"]
 };
 
 let CREW = [];
-const $q = document.getElementById("q"), $list=document.getElementById("list"), $count=document.getElementById("count");
-const $chips=document.getElementById("chips"), $importCsv=document.getElementById("importCsv"), $csvFile=document.getElementById("csvFile");
-const $syncSheets=document.getElementById("syncSheets"), $help=document.getElementById("help"), $debug=document.getElementById("debug"), $testCsv=document.getElementById("testCsv");
 
-function showDebug(html){ $debug.style.display='block'; $debug.innerHTML = html; }
-function clearDebug(){ $debug.style.display='none'; $debug.innerHTML=''; }
+// Elements
+const $q = document.getElementById("q");
+const $list = document.getElementById("list");
+const $count = document.getElementById("count");
+const $chips = document.getElementById("chips");
+const $importCsv = document.getElementById("importCsv");
+const $csvFile = document.getElementById("csvFile");
+const $help = document.getElementById("help");
 
+// Helpers
 const norm = (s)=> (s||"").toString().toLowerCase();
 const tokenize = (s)=> norm(s).split(/[^a-z0-9/ก-๙]+/).filter(Boolean);
 const haystack = (c)=> [c.batch,c.name,c.nickname,c.staff_id,c.rank,c.line_id,c.notes].map(norm).join(" ");
 const openLineById = (lineId)=>{ const id=(lineId||"").trim(); if(!id) return; location.href = `line://ti/p/~${encodeURIComponent(id)}`; };
 
-function parseCSV(text){ const rows=[]; let i=0, cur="", inQ=false, row=[];
-  const pushCell=()=>{ row.push(cur); cur=""; }, pushRow=()=>{ rows.push(row); row=[]; };
-  while(i<text.length){ const ch=text[i++];
-    if(inQ){ if(ch=='"'){ if(text[i]=='"'){cur+='"'; i++;} else inQ=false; } else cur+=ch; }
+// Robust CSV parser
+function parseCSV(text){
+  const rows=[]; let i=0, cur="", inQ=false, row=[];
+  const pushCell=()=>{ row.push(cur); cur=""; };
+  const pushRow=()=>{ rows.push(row); row=[]; };
+  while(i<text.length){
+    const ch=text[i++];
+    if(inQ){ if(ch=='"'){ if(text[i]=='"'){cur+='"'; i++;} else {inQ=false;} } else {cur+=ch;} }
     else { if(ch=='"') inQ=true; else if(ch==',') pushCell(); else if(ch=='\n'){pushCell(); pushRow();} else if(ch=='\r'){} else cur+=ch; }
   }
-  pushCell(); if(row.length>1 || row[0]!="") pushRow(); return rows;
-}
-
-function headerMap(headerRow){
-  const map = {}, seen = headerRow.map(h=>h.trim());
-  CONFIG.HEADERS_FLEX.forEach((aliases, wantIdx)=>{
-    const foundIdx = seen.findIndex(h => aliases.map(a=>a.toLowerCase()).includes(h.toLowerCase()));
-    map[wantIdx] = foundIdx;
-  });
-  // require at least Name + LINE/Notes positions valid
-  return map;
+  pushCell(); if(row.length>1 || row[0]!="") pushRow();
+  return rows;
 }
 
 function csvToCrew(text){
   const rows = parseCSV(text.trim());
   if(!rows.length) return [];
   const header = rows[0].map(h=>h.trim());
-  const map = headerMap(header);
-  // if any of the first 5 are missing (Batch, Name, Nickname, Staff_ID, Rank), we still continue but warn
-  const missing = Object.entries(map).filter(([i,idx])=> idx===-1).map(([i])=> CONFIG.HEADERS_FLEX[i][0]);
-  if(missing.length) showDebug("Header notice: treating missing columns as empty → <code>"+missing.join(", ")+"</code>");
-  const gi=(want)=> map[want] ?? -1;
+  const expected = CONFIG.HEADERS;
+  const ok = expected.every((h, idx)=> (header[idx]||"").toLowerCase() === h.toLowerCase());
+  if(!ok) { alert("CSV headers mismatch. Expected: "+expected.join(", ")+" | Got: "+header.join(", ")); return []; }
+  const gi=(n)=> header.findIndex(h=>h.toLowerCase()===n.toLowerCase());
+  const iBatch=gi("Batch"), iName=gi("Name"), iNick=gi("Nickname"), iStaff=gi("Staff_ID"), iRank=gi("Rank"), iLine=gi("LINE_ID"), iNotes=gi("Notes");
   const out=[];
-  for(let r=1;r<rows.length;r++){ const cells=rows[r]||[];
-    const g=(want)=>{ const idx=gi(want); return idx>=0 ? (cells[idx]||"").trim() : ""; };
+  for(let r=1;r<rows.length;r++){ const cells=rows[r]; if(!cells || !cells.length) continue;
     out.push({
-      batch:g(0), name:g(1), nickname:g(2), staff_id:g(3), rank:g(4), line_id:g(5), notes:g(6)
+      batch:(cells[iBatch]||"").trim(),
+      name:(cells[iName]||"").trim(),
+      nickname:(cells[iNick]||"").trim(),
+      staff_id:(cells[iStaff]||"").trim(),
+      rank:(cells[iRank]||"").trim(),
+      line_id:(cells[iLine]||"").trim(),
+      notes:(cells[iNotes]||"").trim()
     });
   }
   return out;
 }
 
-function card(c){ const el=document.createElement("div"); el.className="card";
+function card(c){
+  const el = document.createElement("div");
+  el.className = "card";
   const hasId = !!(c.line_id && c.line_id.trim());
   const lineInfo = hasId ? `<span>LINE: ${c.line_id}</span>` : `<span>LINE: —</span><span class="missing">No LINE ID found</span>`;
   el.innerHTML = `
     ${c.batch ? '<div class="batch">Batch '+c.batch+'</div>' : ''}
-    <div class="name">${c.name||'(no name)'} ${c.nickname ? '• '+c.nickname : ''}</div>
+    <div class="name">${c.name} ${c.nickname ? '• '+c.nickname : ''}</div>
     <div class="meta"><span class="rank">${c.rank || '—'}</span><span>Staff ID: ${c.staff_id || '-'}</span></div>
     <div class="lineinfo">${lineInfo}</div>
     ${c.notes ? '<div class="notes">'+c.notes+'</div>' : ''}
-    <div class="btns"><button class="${hasId ? 'primary' : 'disabled'}" ${hasId ? '' : 'disabled'}>${hasId ? 'Chat on LINE' : 'No LINE ID'}</button></div>`;
-  const btn=el.querySelector("button"); if(hasId) btn.onclick=()=> openLineById(c.line_id); return el;
+    <div class="btns"><button class="${hasId ? 'primary' : 'disabled'}" ${hasId ? '' : 'disabled'}>${hasId ? 'Chat on LINE' : 'No LINE ID'}</button></div>
+  `;
+  const btn = el.querySelector("button");
+  if (hasId) btn.onclick = ()=> openLineById(c.line_id);
+  return el;
 }
 
 function matchesQuery(c, q){ if(!q) return true; const tokens=tokenize(q); const hay=haystack(c); return tokens.every(t=> hay.includes(t)); }
-function renderList(qstr){ const results=CREW.filter(c=> matchesQuery(c,qstr));
+function renderList(qstr){
+  const results = CREW.filter(c=> matchesQuery(c,qstr));
   const sorted = results.slice().sort((a,b)=> (b.batch||"").localeCompare(a.batch||"", undefined, {numeric:true, sensitivity:"base"}) || (a.name||"").localeCompare(b.name||""));
-  $list.innerHTML=""; sorted.forEach(c=> $list.appendChild(card(c))); $count.textContent = `(${sorted.length})`; }
-function renderChips(){ const batches=Array.from(new Set(CREW.map(c=>c.batch).filter(Boolean)));
-  $chips.innerHTML=""; batches.slice(0,16).forEach(b=>{ const d=document.createElement("div"); d.className="chip"; d.textContent=b; d.onclick=()=>{ $q.value=b; renderList($q.value.trim()); }; $chips.appendChild(d); }); }
+  $list.innerHTML=""; sorted.forEach(c=> $list.appendChild(card(c))); $count.textContent = `(${sorted.length})`;
+}
+function renderChips(){
+  const batches = Array.from(new Set(CREW.map(c=>c.batch).filter(Boolean)));
+  $chips.innerHTML = "";
+  batches.slice(0,16).forEach(b=>{ const d=document.createElement("div"); d.className="chip"; d.textContent=b; d.onclick=()=>{ $q.value=b; renderList($q.value.trim()); }; $chips.appendChild(d); });
+}
 
-document.getElementById("importCsv").onclick = ()=> $csvFile.click();
-$csvFile.onchange = async (e)=>{ const f=e.target.files[0]; if(!f) return; const text=await f.text(); const parsed=csvToCrew(text); if(parsed.length){ clearDebug(); CREW=parsed; renderChips(); renderList($q.value.trim()); alert("CSV loaded."); } };
-$syncSheets.onclick = async ()=>{ await loadFromSheets(); };
-$help.onclick = ()=> alert("Use Test CSV Link to open your CSV directly. If it downloads, the app can fetch it. Headers are flexible (Staff_ID or Staff ID both ok).");
-$testCsv.onclick = ()=> window.open("https://docs.google.com/spreadsheets/d/1HNWHoh29CGYfJsawS0hTXFb8XnUlsiFpyLvi6ZxxmHs/export?format=csv&gid=1751840495", "_blank");
+// Buttons
+$importCsv.onclick = ()=> $csvFile.click();
+$csvFile.onchange = async (e)=>{ const f=e.target.files[0]; if(!f) return; const text=await f.text(); const parsed=csvToCrew(text); if(parsed.length){ CREW=parsed; renderChips(); renderList($q.value.trim()); alert("CSV loaded."); } };
+$help.onclick = ()=> alert("This build autoloads crew.csv from the repo root. Update the file to refresh."); 
 
-async function loadFromSheets(){
+$q.addEventListener("input", ()=> renderList($q.value.trim()));
+
+// Auto-load from local crew.csv on open
+(async function init(){
   try{
-    clearDebug();
-    const res = await fetch("https://docs.google.com/spreadsheets/d/1HNWHoh29CGYfJsawS0hTXFb8XnUlsiFpyLvi6ZxxmHs/export?format=csv&gid=1751840495", {cache:"no-cache"});
+    const res = await fetch(CONFIG.SHEET_CSV_URL, {cache:"no-cache"});
     if(!res.ok) throw new Error(res.status+" "+res.statusText);
     const text = await res.text();
     const parsed = csvToCrew(text);
-    if(parsed.length){ CREW=parsed; renderChips(); renderList($q.value.trim()); }
-    else showDebug("CSV parsed but zero rows. Check that the first row is headers and there are data rows below.");
+    if(parsed.length){ CREW=parsed; renderChips(); renderList(""); }
   }catch(err){
-    showDebug("Fetch failed: <b>"+err.message+"</b><br>1) Click <b>Test CSV Link</b> — if it doesn't download, fix Sheet sharing.<br>2) Ensure 'Anyone with the link → Viewer'.<br>3) If you changed tabs, update gid in the code.");
+    console.warn("Auto-load failed:", err);
   }
-}
-
-// Auto-load
-loadFromSheets();
-$q.addEventListener("input", ()=> renderList($q.value.trim()));
+})();
 </script>
 </body>
 </html>
