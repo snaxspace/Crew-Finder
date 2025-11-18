@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Crew Finder</title>
 <meta name="theme-color" content="#d7000f">
-<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Crew Finder">
 <style>
   :root{ --aa-red:#d7000f; --aa-red-dark:#b0000c; --ink:#111; --muted:#666; --border:#e7e7e7; --card:#fff; --bg:#fafafa; }
   *{box-sizing:border-box} html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.35}
@@ -163,5 +167,13 @@ $q.addEventListener("input", ()=> renderList($q.value.trim()));
   }
 })();
 </script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./service-worker.js')
+      .catch(err => console.warn('Service Worker failed:', err));
+  }
+</script>
+
 </body>
 </html>
